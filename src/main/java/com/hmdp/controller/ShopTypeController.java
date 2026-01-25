@@ -27,8 +27,15 @@ public class ShopTypeController {
 
     @GetMapping("list")
     public Result queryTypeList() {
-        List<ShopType> typeList = typeService
-                .query().orderByAsc("sort").list();
-        return Result.ok(typeList);
+        // 1. 从Redis缓存中查询商铺类型缓存
+
+        // 2. 若存在，直接返回
+        // 3. 不存在，查询数据库
+        // 4. 数据库存在，写入Redis缓存并返回
+        // 5. 数据库不存在，返回错误
+        return typeService.queryTypeList();
+//        List<ShopType> typeList = typeService
+//                .query().orderByAsc("sort").list();
+//        return Result.ok(typeList);
     }
 }
