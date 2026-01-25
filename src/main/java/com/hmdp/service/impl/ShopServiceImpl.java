@@ -63,7 +63,10 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             return Result.fail("店铺 id 不能为空");
         }
         // 1. 更新数据库
-        updateById(shop);
+        boolean success = updateById(shop);
+        if (!success) {
+            return Result.fail("更新失败");
+        }
         // 2. 删除缓存
         stringRedisTemplate.delete(CACHE_SHOP_KEY + shop.getId());
         // 3. 返回结果
