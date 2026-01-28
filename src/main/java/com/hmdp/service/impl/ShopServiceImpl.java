@@ -9,6 +9,7 @@ import com.hmdp.entity.Shop;
 import com.hmdp.mapper.ShopMapper;
 import com.hmdp.service.IShopService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hmdp.utils.CacheClient;
 import com.hmdp.utils.RedisData;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -37,16 +38,20 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    @Resource
+    private CacheClient cacheClient;
+
     @Override
     public Result queryById(Long id) {
         // 实现缓存穿透
-        // Shop shop = queryWithPassThrough(id);
+        Shop shop = cacheClient.queryWithPassThrough
+                (CACHE_SHOP_KEY, id, Shop.class, this::getById, CACHE_SHOP_TTL, TimeUnit.MINUTES);
 
         // 实现缓存击穿（互斥锁）
         // Shop shop = queryWithMutex(id);
 
         // 实现缓存击穿（逻辑过期）
-        Shop shop = queryWithLogicalExpire(id);
+//        Shop shop = queryWithLogicalExpire(id);
 
         if (shop == null) {
             return Result.fail("商铺不存在！");
@@ -108,36 +113,8 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         return shop;
     }
 
-    public Shop queryWithPassThrough(Long id) {
-        String key = CACHE_SHOP_KEY + id;
-        // 1. 从Redis查询商铺缓存
-        String shopJson = stringRedisTemplate.opsForValue().get(key);
-        // 2. 判断商铺是否存在
-        if (StrUtil.isNotBlank(shopJson)) {
-            // 3. 存在，直接返回
-            return JSONUtil.toBean(shopJson, Shop.class);
-        }
-        // 判断命中的是否是空值
-        if (shopJson != null) {
-            return null;
-        }
-        // 4. 不存在，根据id查询数据库
-        Shop shop = getById(id);
-        // 5. 不存在，返回错误
-        if (shop == null) {
-            stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL + RandomUtil.randomInt(1, 4), TimeUnit.MINUTES);
-            return null;
-        }
-        // 6. 存在，写入Redis
-        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(shop), CACHE_SHOP_TTL + RandomUtil.randomInt(0, 30), TimeUnit.MINUTES);
-        // 7. 返回
-        return shop;
-    }
-
     /**
      * 获取锁
-     * @param key
-     * @return
      */
     private boolean tryLock(String key) {
         Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", LOCK_SHOP_TTL, TimeUnit.SECONDS);
@@ -146,7 +123,6 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     /**
      * 释放锁
-     * @param key
      */
     private void unlock(String key) {
         stringRedisTemplate.delete(key);
