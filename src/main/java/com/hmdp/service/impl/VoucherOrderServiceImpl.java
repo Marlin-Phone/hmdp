@@ -48,14 +48,15 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return Result.fail("秒杀已结束");
         }
         // 4. 判断库存是否充足
-        if(voucher.getStock() <= 0){
+        Integer stock = voucher.getStock(); // 乐观锁，使用stock数量作为版本号（CAS法）
+        if(stock <= 0){
             return Result.fail("库存不足");
         }
         // 5. 扣除库存
-//        voucher.setStock(voucher.getStock() - 1);
-//        voucher.setUpdateTime(LocalDateTime.now());
         boolean success = seckillVoucherService.update().setSql("stock = stock - 1")
-                .eq("voucher_id", voucherId).update();
+                .eq("voucher_id", voucherId)
+                .gt("stock", 0) // 乐观锁，stock > 0 时才能扣减成功
+                .update();
         if(!success){
             return Result.fail("库存不足");
         }
