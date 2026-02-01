@@ -10,6 +10,7 @@ import com.hmdp.service.IVoucherOrderService;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.SimpleRedisLock;
 import com.hmdp.utils.UserHolder;
+import org.redisson.Redisson;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.aop.framework.AopContext;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -39,6 +41,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private RedissonClient redissonClient;
+    @Resource
+    private RedissonClient redissonClient2;
+    @Resource
+    private RedissonClient redissonClient3;
 
     @Override
     public Result seckillVoucher(Long voucherId) {
@@ -62,8 +68,13 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         Long userId = UserHolder.getUser().getId();
         // 创建锁对象
-        RLock lock = redissonClient.getLock("lock:order:" + userId);
-        // 获取锁
+//        RLock lock = redissonClient.getLock("lock:order:" + userId);
+        RLock lock1 = redissonClient.getLock("lock:order:" + userId);
+        RLock lock2 = redissonClient2.getLock("lock:order" + userId);
+        RLock lock3 = redissonClient3.getLock("lock:order" + userId);
+        // 创建联锁
+        RLock lock = redissonClient.getMultiLock(lock1, lock2, lock3);
+        // 获取锁（带看门狗机制）
         boolean isLock = lock.tryLock();
         // 判断是否获取锁成功
         if(!isLock){
