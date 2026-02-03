@@ -9,6 +9,7 @@ import com.hmdp.entity.UserInfo;
 import com.hmdp.service.IUserInfoService;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.UserHolder;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,13 +27,11 @@ import javax.servlet.http.HttpSession;
 @Slf4j
 @RestController
 @RequestMapping("/user")
+@RequiredArgsConstructor
 public class UserController {
 
-    @Resource
-    private IUserService userService;
-
-    @Resource
-    private IUserInfoService userInfoService;
+    private final IUserService userService;
+    private final IUserInfoService userInfoService;
 
     /**
      * 发送手机验证码
@@ -48,9 +47,7 @@ public class UserController {
      */
     @PostMapping("/login")
     public Result login(@RequestBody LoginFormDTO loginForm, HttpSession session){
-        // TODO 实现登录功能
         return userService.login(loginForm, session);
-//        return Result.fail("功能未完成");
     }
 
     /**

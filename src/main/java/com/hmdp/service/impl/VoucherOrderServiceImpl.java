@@ -8,6 +8,7 @@ import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.UserHolder;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -18,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -35,16 +35,13 @@ import java.util.concurrent.Executors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
 
-    @Resource
-    private ISeckillVoucherService seckillVoucherService;
-    @Resource
-    private RedisIdWorker redisIdWorker;
-    @Resource
-    private StringRedisTemplate stringRedisTemplate;
-    @Resource
-    private RedissonClient redissonClient;
+    private final ISeckillVoucherService seckillVoucherService;
+    private final RedisIdWorker redisIdWorker;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final RedissonClient redissonClient;
 
     private static final DefaultRedisScript<Long> SECKILL_SCRIPT;
     static {
@@ -53,7 +50,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         SECKILL_SCRIPT.setResultType(Long.class);
     }
 
-    private BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024*1024);
+    private final BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024*1024);
     private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newFixedThreadPool(1);
 
     @PostConstruct
@@ -79,7 +76,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     /**
      * 子线程
-     * @param voucherOrder
      */
     private void handleVoucherOrder(VoucherOrder voucherOrder) {
         // 1. 获取用户id
@@ -112,8 +108,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     /**
      * 主线程
-     * @param voucherId
-     * @return
      */
     @Override
     public Result seckillVoucher(Long voucherId) {
@@ -149,6 +143,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         return Result.ok(orderId);
     }
 
+    /**
+     * 创建订单
+     */
     @Transactional(rollbackFor = Exception.class)
     public void creatVoucherOrder(VoucherOrder voucherOrder) {
         // 一人一单

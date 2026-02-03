@@ -17,7 +17,19 @@ import javax.servlet.http.HttpSession;
  */
 public interface IUserService extends IService<User> {
 
+    /**
+     * 发送手机验证码
+     * @param phone 手机号
+     * @param session session
+     * @return Result 前端结果
+     */
     Result sendCode(String phone, HttpSession session);
 
+    /**
+     * 登录功能
+     * @param loginForm 登录参数，包含手机号、验证码、密码
+     * @param session session
+     * @return Result 前端结果
+     */
     Result login(LoginFormDTO loginForm, HttpSession session);
 }

@@ -8,6 +8,7 @@ import com.hmdp.entity.ShopType;
 import com.hmdp.mapper.ShopTypeMapper;
 import com.hmdp.service.IShopTypeService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import static com.hmdp.utils.RedisConstants.CACHE_SHOP_KEY;
 import static com.hmdp.utils.RedisConstants.CACHE_SHOP_TTL;
 
 /**
@@ -29,15 +31,15 @@ import static com.hmdp.utils.RedisConstants.CACHE_SHOP_TTL;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> implements IShopTypeService {
 
-    @Resource
-    private StringRedisTemplate stringRedisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     public Result queryTypeList() {
-        // 缓存 key（可提取到 RedisConstants）
-        String key = "cache:shop:type";
+        // 缓存 key
+        String key = CACHE_SHOP_KEY;
         // 1. 从 Redis 缓存中查询商铺类型
         String typeJson = stringRedisTemplate.opsForValue().get(key);
         // 2. 若存在，直接返回

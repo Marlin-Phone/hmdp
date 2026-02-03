@@ -12,6 +12,7 @@ import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexUtils;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -36,10 +37,10 @@ import static com.hmdp.utils.SystemConstants.USER_NICK_NAME_PREFIX;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
 
-    @Resource
-    private StringRedisTemplate stringRedisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     public Result sendCode(String phone, HttpSession session) {
@@ -48,18 +49,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             // 2. 如果不符合，返回错误信息
             return Result.fail("手机号格式错误！");
         }
-
         // 3. 符合，生成验证码
         String code = RandomUtil.randomNumbers(6);
-
         // 4. 保存验证码到 Redis 并设置有效期为2分钟
-//        session.setAttribute("code", code);
         stringRedisTemplate.opsForValue().set(LOGIN_CODE_KEY + phone, code, LOGIN_CODE_TTL, TimeUnit.MINUTES);
-
-
         // 5. 发送验证码
         log.debug("发送短信验证码成功，验证码：{}", code);
-
         // 6. 返回ok
         return Result.ok();
     }
@@ -75,7 +70,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 2. 从 Redis 获取验证码并校验
         String cacheCode = stringRedisTemplate.opsForValue().get(LOGIN_CODE_KEY + phone);
         String code = loginForm.getCode();
-        if(cacheCode == null || !cacheCode.toString().equals(code)){
+        if(cacheCode == null || !cacheCode.equals(code)){
             // 3. 不一致，报错
             return Result.fail("验证码错误");
         }
@@ -97,6 +92,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                         .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString())
                 );
         // 7.3 存储
+        // TODO 可优化: 这里可以使用Lua脚本代替两部分Redis操作，保证原子性。
         String tokenKey = LOGIN_USER_KEY + token;
         stringRedisTemplate.opsForHash().putAll(tokenKey, userMap);
         // 7.4 设置 token 有效期

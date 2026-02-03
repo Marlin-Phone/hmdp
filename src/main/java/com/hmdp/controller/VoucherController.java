@@ -4,6 +4,7 @@ package com.hmdp.controller;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.Voucher;
 import com.hmdp.service.IVoucherService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -18,10 +19,10 @@ import javax.annotation.Resource;
  */
 @RestController
 @RequestMapping("/voucher")
+@RequiredArgsConstructor
 public class VoucherController {
 
-    @Resource
-    private IVoucherService voucherService;
+    private final IVoucherService voucherService;
 
     /**
      * 新增普通券
