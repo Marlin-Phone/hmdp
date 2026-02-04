@@ -1,5 +1,6 @@
 package com.hmdp.utils;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -8,6 +9,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
 @Component
+@RequiredArgsConstructor
 public class RedisIdWorker {
     /**
      * 开始时间戳
@@ -18,11 +20,7 @@ public class RedisIdWorker {
      */
     private static final int COUNT_BITS = 32;
 
-    private StringRedisTemplate stringRedisTemplate;
-
-    public RedisIdWorker(StringRedisTemplate stringRedisTemplate) {
-        this.stringRedisTemplate = stringRedisTemplate;
-    }
+    private final StringRedisTemplate stringRedisTemplate;
 
     public long nextId(String keyPrefix) {
         // 1.生成时间戳
