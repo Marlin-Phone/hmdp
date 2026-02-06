@@ -5,6 +5,7 @@ import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.ScrollResult;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.Blog;
 import com.hmdp.entity.Follow;
@@ -15,6 +16,7 @@ import com.hmdp.service.IBlogService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.service.IFollowService;
 import com.hmdp.service.IUserService;
+import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.SystemConstants;
 import com.hmdp.utils.UserHolder;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.hmdp.utils.RedisConstants.FEED_KEY;
 
 /**
  * <p>
@@ -150,13 +154,52 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         // 推送笔记id给所有粉丝
         for (Follow follow : follows) {
             // 获取粉丝id
-            Long userId = follow.getId();
+            Long userId = follow.getUserId();
             // 推送 zadd feed:userId blogId 当前时间戳
             String key = "feed:" + userId;
             stringRedisTemplate.opsForZSet().add(key, blog.getId().toString(), System.currentTimeMillis());
         }
         // 返回id
         return Result.ok(blog.getId());
+    }
+
+    @Override
+    public Result queryBlogOfFollow(Long max, Integer offset) {
+        // 1. 获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        // 2. 查询收件箱 ZREVRANGEBYSCORE key max min LIMIT offset count
+        String key = FEED_KEY + userId;
+        Set<String> ids = stringRedisTemplate.opsForZSet().reverseRangeByScore(key, 0, max, offset, 2);
+        // 3. 非空判断
+        if(ids == null || ids.isEmpty()){
+            return Result.ok();
+        }
+        // 4. 解析数据 blogIds、minTime、offset
+        List<Long> blogIds = ids.stream().map(Long::valueOf).collect(Collectors.toList());
+        long minTime = 0;
+        int os = 1;
+        for (String id : ids) {
+            long time = stringRedisTemplate.opsForZSet().score(key, id).longValue();
+            if(time == minTime){
+                os++;
+            }else{
+                minTime = time;
+                os = 1;
+            }
+        }
+        // 5. 根据id查询博客 select * from tb_blog where id in (ids) order by field(id, , , )
+        String idStr = StrUtil.join(",", blogIds);
+        List<Blog> blogs = query().in("id", blogIds)
+                .last("ORDER BY FIELD(id," + idStr + ")").list();
+        // 6. 查询博客有关的用户
+        for (Blog blog : blogs) {
+            // 查询博客有关的用户
+            queryBlogUser(blog);
+            // 查询是否点赞并设置
+            isBlogLiked(blog);
+        }
+        // 7. 返回
+        return Result.ok(new ScrollResult(blogs, minTime, os));
     }
 
     private void queryBlogUser(Blog blog) {
