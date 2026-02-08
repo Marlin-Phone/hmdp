@@ -99,4 +99,25 @@ class HmDianPingApplicationTests {
             stringRedisTemplate.opsForGeo().add(key, locations);
         }
     }
+
+    @Test
+    void testHyperLogLog(){
+        // 准备数组，装用户数据
+        String[] users = new String[1000];
+        // 数组角标
+        int index = 0;
+        for(int i = 1; i <= 1000000; i++){
+            // 生成用户id
+            users[index++] = "user_" + i;
+            // 每1000个用户写入一次Redis
+            if(i % 1000 == 0){
+                // 写入Redis
+                stringRedisTemplate.opsForHyperLogLog().add("hll1", users);
+                // 重置数组角标
+                index = 0;
+            }
+        }
+        Long size = stringRedisTemplate.opsForHyperLogLog().size(users);
+        System.out.println(size);
+    }
 }
